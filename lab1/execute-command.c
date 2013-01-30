@@ -4,6 +4,8 @@
 #include "command-internals.h"
 
 #include <error.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <stdbool.h> //bool
 
 #include <fcntl.h>
