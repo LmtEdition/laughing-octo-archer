@@ -3,13 +3,16 @@
 #include "command.h"
 #include "command-internals.h"
 
+#include <sys/types.h>
+#include <sys/wait.h>  //waitpid
+
 #include <error.h>
 #include <unistd.h> //pipe,
-#include <fcntl.h>
 #include <stdbool.h> //bool
+#include <stdio.h>
 
 #include <fcntl.h>
-#include <unistd.h>
+#include <sys/stat.h>
 
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
@@ -164,7 +167,7 @@ execute_command (command_t c, bool time_travel)
   error (1, 0, "command execution not yet implemented");*/
 
     if(c == NULL)
-        return true;
+        return false;
 
     switch(c->type) {
 
@@ -183,93 +186,129 @@ execute_command (command_t c, bool time_travel)
 
         case SEQUENCE_COMMAND:
         {   //execute left
-            execute_command(c->u.command[0],time_travel);
-
+            if (!execute_command(c->u.command[0],time_travel))
+				return false;
             //execute right
-            execute_command(c->u.command[1],time_travel);
+            if (!execute_command(c->u.command[1],time_travel))
+			    return false;	
 
-            //essentially a place holder because postorder traversal executes left the right
+            //essentially a place holder because postorder traversal executes left then right
             return true;
         }
         case PIPE_COMMAND:
+		{
 			int fd[2];
 			pid_t childpid;
 
 			pipe(fd);
 
 			if ((childpid = fork()) == -1) 
-				error(1, 0, "fork failed");
+				return false;
+				//error(1, 0, "fork failed");
 
 			if (childpid == 0) {
 				// Child process closes read/input side of pipe
 				close(fd[0]);
-
+            
 				// redirect stdout to write/output side of pipe
 				dup2(1, fd[1]);
-				execute_command(c->u.command[0], time_travel);
+				if (!execute_command(c->u.command[0], time_travel))
+					_exit(1);
+				_exit(0);	
 			} else {
 				// Parent process closes write/output side of pipe
 				close(fd[1]);
 
 				// redirect stdin to read/input side of pipe
 				dup2(0, fd[0]);
-				execute_command(c->u.command[1], time_travel);
+
+				int status;
+		 	    waitpid(childpid, &status, 0);		
+
+				// execute failed
+				if (WEXITSTATUS(status) == 1) {
+					return false;
+				} else {
+				
+				if (!execute_command(c->u.command[1], time_travel))
+					return false;
+				}
 			}
 
             return true;
+		}
 
         //unary commands
         case SIMPLE_COMMAND:
         {    //file io
             //if input redirection <
-            int fd_i , fd_o;
+            int fd_i = -1, fd_o = -1;
 
-            if(c->input) {
 
-                if((fd_i = open(c->input,O_RDONLY)) == -1) {
+            //finally execute function, must fork or execvp exits process
+			pid_t childpid;
+			if ((childpid = fork()) == -1) 
+				return false;
+				//error(1, 0, "fork failed");
 
-                   error(1, 0, "Error opening input file: %s\n", c->input);
+			// child process
+			if (childpid == 0) {
+				if(c->input) {
 
-                } else {
-                    //closes fd and and performs redirection to specified file descriptor 
-                    //such that input is read from file
-                    if(dup2(fd_i,0) < 0) {
-                        error(1, 0, "Error using dup2 for input redirection");
-                    }
-                }
-            }
+					if ((fd_i = open(c->input, O_RDWR, S_IREAD | S_IWRITE)) == -1) {
 
-            //if output redirection
-            if(c->output) {
-                if((fd_o = open(c->output,O_WRONLY)) == -1) {
-                    error(1, 0, "Error opening output file: %s\n", c->output);
-                } else {
-                     //duplicates output fd into stdout file descriptor such that output redirects into file  
-                     if(dup2(fd_o,1) < 0) {
-                           error(1, 0, "Error using dup2 for output redirection");
-                     }
-                }
-            }
+					   //error(1, 0, "Error opening input file: %s\n", c->input);
+					   return false;
 
-            //finally execute function
-            if(execvp(c->u.word[0],c->u.word) == -1) {
-                return false;
-            }
+					} else {
+						//closes fd and performs redirection to specified file descriptor 
+						//such that input is read from file
+						if (dup2(fd_i, 0) < 0) {
+							//error(1, 0, "Error using dup2 for input redirection");
+							return false;
+						}
+					}
+				}
 
-            if(fd_i != -1) {
-                close(fd_i);
-            }
-            
-            if(fd_o != -1) {
-                close(fd_o);
-            }
+				//if output redirection
+				if(c->output) {
+					if((fd_o = open(c->output,O_RDWR | O_CREAT, S_IREAD | S_IWRITE)) == -1) {
+						//error(1, 0, "Error opening output file: %s\n", c->output);
+						return false;
+					} else {
+						 //duplicates output fd into stdout file descriptor such that output redirects into file  
+						 if(dup2(fd_o,1) < 0) {
+							   //error(1, 0, "Error using dup2 for output redirection");
+							   return false;
+						 }
+					}
+				}
+				execvp(c->u.word[0], c->u.word);
+				printf("bad command, execvp failed");
+				_exit(1);
+			// parent process
+			} else { 
+				int status;
+		 	    waitpid(childpid, &status, 0);		
 
-            return true;
+				// execvp failed and child process exited correctly
+				if (WEXITSTATUS(status) == 1) {
+					printf("false\n");
+					return false;
+				} else {
+					close(fd_i);
+					
+					close(fd_o);
+
+					printf("true\n");
+					return true;
+				}
+			}
         }
         case SUBSHELL_COMMAND:
             return execute_command(c->u.subshell_command,time_travel);
         default:
-              abort ();
+			return false;
     }
 
 }
