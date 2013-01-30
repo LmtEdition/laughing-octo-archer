@@ -8,6 +8,10 @@ enum command_type
     PIPE_COMMAND,        // A | B
     SIMPLE_COMMAND,      // a simple command
     SUBSHELL_COMMAND,    // ( A )
+
+    //these two are not command types but simplify conversion of infix to postfix
+    LEFT_PAREN, // (
+    RIGHT_PAREN // )
   };
 
 // Data associated with a command.
