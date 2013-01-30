@@ -16,5 +16,9 @@ The parsing of the bytes of the filestream is done with complicated if-else logi
 that should be optimized and refactored to be more understandable. 
 
 Lab1b
+
+Implementation:
+Made a bunch of switch statements in a recursive execute_command function.
+
 Sources:
 http://www.tldp.org/LDP/lpg/node11.html
