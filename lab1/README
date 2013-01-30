@@ -14,3 +14,7 @@ Low  -> SUBSHELL
 
 The parsing of the bytes of the filestream is done with complicated if-else logic 
 that should be optimized and refactored to be more understandable. 
+
+Lab1b
+Sources:
+http://www.tldp.org/LDP/lpg/node11.html

@@ -4,7 +4,7 @@
 #include "command-internals.h"
 
 #include <error.h>
-#include <unistd.h>
+#include <unistd.h> //pipe,
 #include <fcntl.h>
 #include <stdbool.h> //bool
 
@@ -59,7 +59,30 @@ bool exec_sequence(command_t c) {
     return true;
 }
 
-bool exec_pipe(command_t c){
+bool exec_pipe(command_t c) {
+    int fd[2];
+    pid_t childpid;
+
+    pipe(fd);
+
+    if ((childpid = fork()) == -1) 
+        error(1, 0, "fork failed");
+
+    if (childpid == 0) {
+        // Child process closes read/input side of pipe
+        close(fd[0]);
+
+		// redirect stdout to write/output side of pipe
+		dup2(1, fd[1]);
+		execute_command(c->u.command[0], time_travel);
+    } else {
+        // Parent process closes write/output side of pipe
+		close(fd[1]);
+
+		// redirect stdin to read/input side of pipe
+		dup2(0, fd[0]);
+		execute_command(c->u.command[1], time_travel);
+	}
 
 }
 
