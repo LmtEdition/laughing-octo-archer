@@ -174,10 +174,7 @@ execute_command (command_t c, bool time_travel)
         //binary commands
         case AND_COMMAND:
 
-            //If the left side evaluates to true we must also evaluate the left side
-            //Otherwise return false indicating that command failed
-
-           return execute_command(c->u.command[0],time_travel) &&  execute_command(c->u.command[1],time_travel);  
+            //If the left side evaluates to true we must also evaluate the left side //Otherwise return false indicating that command failed return execute_command(c->u.command[0],time_travel) &&  execute_command(c->u.command[1],time_travel);  
 
         case OR_COMMAND:
             // If the left side is true return 0 (success immediately)
@@ -303,10 +300,8 @@ execute_command (command_t c, bool time_travel)
 
 				// execvp failed and child process exited correctly
 				if (WEXITSTATUS(status) == 1) {
-					printf("false\n");
 					return false;
 				} else {
-					printf("true\n");
 					return true;
 				}
 			}
