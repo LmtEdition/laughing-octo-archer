@@ -198,7 +198,20 @@ get_simple_command(int (*get_next_byte) (void *), void *filestream, int line_num
     }
        
   }
+  // remove whitespaces at end of simple commands and put back ONE whitespace if any were removed
+  int i;
+  for (i = buf_idx-1; i >= 0; i--)
+	  if (simple_cmd_buf[i] != ' ')
+		  break;
+		  
+  // if a whitespace wasn't removed
+  if (i != buf_idx-1)
+	  ungetc(' ', filestream);
+
+  buf_idx = i + 1;
   simple_cmd_buf[buf_idx] = '\0'; // C string end with NULL byte
+
+
   char *free_buf = simple_cmd_buf; // strtok will modify argument string, so keep pointer to free memory
 
   command_t simple_cmd = create_simple_command(simple_cmd_buf, input_buf, output_buf);
