@@ -207,35 +207,42 @@ execute_command (command_t c, bool time_travel)
 				//error(1, 0, "fork failed");
 
 			if (childpid == 0) {
-				// Child process closes read/input side of pipe
+				// child process closes read/input side of pipe
 				close(fd[0]);
             
-				// redirect stdout to write/output side of pipe
-				dup2(1, fd[1]);
-				if (!execute_command(c->u.command[0], time_travel))
-					_exit(1);
-				_exit(0);	
-			} else {
-				// Parent process closes write/output side of pipe
+				// redirect write/output side of pipe stdout
+				dup2(fd[1], 1);
+				bool cmd_success = execute_command(c->u.command[0], time_travel);
 				close(fd[1]);
 
-				// redirect stdin to read/input side of pipe
-				dup2(0, fd[0]);
+				if (cmd_success)
+					_exit(0);
+				else
+					_exit(1);
+			} else {
+				// parent process closes write/output side of pipe
+				close(fd[1]);
 
+				// redirect read/input side of pipe to stdin
+				dup2(fd[0], 0);
+
+				bool cmd_success = execute_command(c->u.command[1], time_travel);
+				close(fd[0]);
+			
 				int status;
 		 	    waitpid(childpid, &status, 0);		
 
 				// execute failed
 				if (WEXITSTATUS(status) == 1) {
 					return false;
-				} else {
-				
-				if (!execute_command(c->u.command[1], time_travel))
-					return false;
 				}
+
+				if (!cmd_success)
+					return false;	
 			}
 
             return true;
+
 		}
 
         //unary commands
@@ -291,24 +298,24 @@ execute_command (command_t c, bool time_travel)
 				int status;
 		 	    waitpid(childpid, &status, 0);		
 
+				close(fd_i);
+				close(fd_o);
+
 				// execvp failed and child process exited correctly
 				if (WEXITSTATUS(status) == 1) {
 					printf("false\n");
 					return false;
 				} else {
-					close(fd_i);
-					
-					close(fd_o);
-
 					printf("true\n");
 					return true;
 				}
 			}
+			return true;
         }
         case SUBSHELL_COMMAND:
             return execute_command(c->u.subshell_command,time_travel);
-        default:
+
+		default:
 			return false;
     }
-
 }
