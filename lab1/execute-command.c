@@ -35,6 +35,51 @@ int command_status (command_t c)
  *   	1 means fail
  *   	-1 means unknown
  */
+void exec_simple_command(command_t c, int* fd_i, int* fd_o, bool exec) {
+	if (c == NULL)
+		return;
+	if(c->input) {
+		if ((*fd_i = open(c->input, O_RDONLY)) == -1) {
+			fprintf(stderr, "%s\n", strerror(errno));
+			c->status = 1;
+			return;
+		   //error(1, 0, "Error opening input file: %s\n", c->input);
+		} else {
+			//closes fd and performs redirection to specified file descriptor 
+			//such that input is read from file
+			if (dup2(*fd_i, 0) < 0) {
+				//error(1, 0, "Error using dup2 for input redirection");
+				fprintf(stderr, "%s\n", strerror(errno));
+				c->status = 1;
+				return;
+			}
+		}
+	}
+
+	//if output redirection
+	if (c->output) {
+		if ((*fd_o = open(c->output, O_RDWR | O_CREAT, 0666)) == -1) {
+			//error(1, 0, "Error opening output file: %s\n", c->output);
+			fprintf(stderr, "%s\n", strerror(errno));
+			c->status = 1;
+			return;
+		} else {
+			 //duplicates output fd into stdout file descriptor such that output redirects into file  
+			 if(dup2(*fd_o,1) < 0) {
+				   //error(1, 0, "Error using dup2 for output redirection");
+				fprintf(stderr, "%s\n", strerror(errno));
+				c->status = 1;
+				return;
+			 }
+		}
+	}
+	if (exec)
+		execvp(c->u.word[1], c->u.word + 1);
+	else 
+		execvp(c->u.word[0], c->u.word);
+	fprintf(stderr, "%s\n", strerror(errno));
+}
+
 void
 exec_command(command_t c) {
     if(c == NULL)
@@ -127,6 +172,11 @@ exec_command(command_t c) {
             //if input redirection <
             int fd_i = -1, fd_o = -1;
 
+			// if exec keyword is found, then do not fork a child process
+			if (strcmp(c->u.word[0], "exec") == 0) 
+				exec_simple_command(c, &fd_i, &fd_o, true);
+
+					
             //finally execute function, must fork or execvp exits process
 			pid_t childpid;
 			if ((childpid = fork()) == -1) {
@@ -137,43 +187,7 @@ exec_command(command_t c) {
 
 			// child process
 			if (childpid == 0) {
-				if(c->input) {
-					if ((fd_i = open(c->input, O_RDWR, S_IREAD | S_IWRITE)) == -1) {
-						fprintf(stderr, "%s\n", strerror(errno));
-						c->status = 1;
-						break;
-					   //error(1, 0, "Error opening input file: %s\n", c->input);
-					} else {
-						//closes fd and performs redirection to specified file descriptor 
-						//such that input is read from file
-						if (dup2(fd_i, 0) < 0) {
-							//error(1, 0, "Error using dup2 for input redirection");
-							fprintf(stderr, "%s\n", strerror(errno));
-							c->status = 1;
-							break;
-						}
-					}
-				}
-
-				//if output redirection
-				if(c->output) {
-					if((fd_o = open(c->output,O_RDWR | O_CREAT, S_IREAD | S_IWRITE)) == -1) {
-						//error(1, 0, "Error opening output file: %s\n", c->output);
-						fprintf(stderr, "%s\n", strerror(errno));
-						c->status = 1;
-						break;
-					} else {
-						 //duplicates output fd into stdout file descriptor such that output redirects into file  
-						 if(dup2(fd_o,1) < 0) {
-							   //error(1, 0, "Error using dup2 for output redirection");
-							fprintf(stderr, "%s\n", strerror(errno));
-							c->status = 1;
-							break;
-						 }
-					}
-				}
-				execvp(c->u.word[0], c->u.word);
-				fprintf(stderr, "%s\n", strerror(errno));
+				exec_simple_command(c, &fd_i, &fd_o, false);
 				_exit(1);
 			// parent process
 			} else { 
