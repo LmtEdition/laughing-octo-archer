@@ -22,7 +22,7 @@ TIMETRASH_SOURCES = \
 TIMETRASH_OBJECTS = $(subst .c,.o,$(TIMETRASH_SOURCES))
 
 DIST_SOURCES = \
-  $(TIMETRASH_SOURCES) alloc.h command.h command-internals.h Makefile \
+  $(TIMETRASH_SOURCES) alloc.h command.h command-internals.h parallel-command.h Makefile \
   $(TESTS) check-dist README
 
 timetrash: $(TIMETRASH_OBJECTS)
@@ -31,6 +31,7 @@ timetrash: $(TIMETRASH_OBJECTS)
 alloc.o: alloc.h
 execute-command.o main.o print-command.o read-command.o parallel-command.o: command.h
 execute-command.o print-command.o read-command.o parallel-command.o: command-internals.h
+execute-command.o parallel-command.o: parallel-command.h
 
 dist: $(DISTDIR).tar.gz
 
