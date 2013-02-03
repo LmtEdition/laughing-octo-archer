@@ -16,13 +16,6 @@
 /* FIXME: Define the type 'struct command_stream' here.  This should
    complete the incomplete type declaration in command.h.  */
 
-// a linked-list of pointers to commands
-struct command_stream
-{
-  command_t cmd;
-  struct command_stream *next;
-};
-
 bool
 is_simple_char(char byte)
 {
@@ -791,9 +784,11 @@ make_command_stream (int (*get_next_byte) (void *),
      add auxiliary functions and otherwise modify the source code.
      You can also use external functions defined in the GNU C Library.  */
 
-  // create a dummy head of the stream
-  command_stream_t head_stream = (command_stream_t) checked_malloc(sizeof(struct command_stream)); 
-  command_stream_t cur_stream = head_stream;
+  command_stream_t stream = (command_stream_t) checked_malloc(sizeof(struct command_stream)); 
+
+  size_t byte_size = (size_t) sizeof(command_t) * 16;
+	stream->cmds = (command_t*) checked_malloc(byte_size);
+	stream->size = 0;
 
   int line_number = 1;
   command_t *infix_arr;
@@ -801,36 +796,30 @@ make_command_stream (int (*get_next_byte) (void *),
   int infix_len = 0;
   while ( (infix_arr = get_infix_commands(get_next_byte, filestream, &line_number, &infix_len)) )
   {
-    cur_stream->next = (command_stream_t)checked_malloc(sizeof(struct command_stream));
-    postfix = create_postfix(infix_arr,&infix_len);
-    cur_stream->next->cmd = create_binary_tree(postfix,infix_len);
-    cur_stream = cur_stream->next;
+    if ((stream->size) * sizeof(command_t) == byte_size) 
+      stream->cmds = checked_grow_alloc(stream->cmds, &byte_size);
+
+    postfix = create_postfix(infix_arr, &infix_len);
+    stream->cmds[stream->size] = create_binary_tree(postfix, infix_len);
+		stream->size++;
 
     free(infix_arr);
   }
 
-  cur_stream->next = NULL;
+	if (stream->size * sizeof(command_t) < byte_size)
+   	stream->cmds = (command_t*)checked_realloc(stream->cmds, stream->size * sizeof(command_t));
 
-  return head_stream;
+  return stream;
 }
 
 command_t
 read_command_stream (command_stream_t s)
 {
   /* FIXME: Replace this with your implementation too.  */
- 
-  if(s && s->next)
-  {
-    command_stream_t temp = s->next;
 
-    // link the next node's next to the head since next node's cmd will be returned
-    s->next = s->next->next;
-
-    command_t get_cmd = temp->cmd;
-    free(temp);
-    
-    return get_cmd;
-  }
-  
+	if (s) {
+		if (s->idx < s->size)
+			return s->cmds[s->idx++];
+	}
   return NULL;
 }

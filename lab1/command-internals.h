@@ -38,3 +38,12 @@ struct command
     struct command *subshell_command;
   } u;
 };
+
+// holds an array of top level commands
+struct command_stream
+{
+	command_t* cmds; // array of command_t
+	int size; // size of array
+	int idx; // index for read_command_stream
+};
+
