@@ -17,7 +17,8 @@ TIMETRASH_SOURCES = \
   execute-command.c \
   main.c \
   read-command.c \
-  print-command.c
+  print-command.c \
+  parallel-command.c
 TIMETRASH_OBJECTS = $(subst .c,.o,$(TIMETRASH_SOURCES))
 
 DIST_SOURCES = \
@@ -28,8 +29,8 @@ timetrash: $(TIMETRASH_OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $(TIMETRASH_OBJECTS)
 
 alloc.o: alloc.h
-execute-command.o main.o print-command.o read-command.o: command.h
-execute-command.o print-command.o read-command.o: command-internals.h
+execute-command.o main.o print-command.o read-command.o parallel-command.o: command.h
+execute-command.o print-command.o read-command.o parallel-command.o: command-internals.h
 
 dist: $(DISTDIR).tar.gz
 
