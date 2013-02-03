@@ -15,6 +15,7 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#include "parallel-command.h"
 
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
@@ -255,12 +256,58 @@ exec_command(command_t c) {
     }
 }
 
-void
-execute_command (command_t c, bool time_travel)
+int
+execute_command (command_stream_t c_stream, bool time_travel)
 {
   /* FIXME: Replace this with your implementation.  You may need to
      add auxiliary functions and otherwise modify the source code.
      You can also use external functions defined in the GNU C Library.  
   error (1, 0, "command execution not yet implemented");*/
-	exec_command(c);
+
+    command_t cmd;
+    int last_command_status;
+    file_t** file_system = NULL;
+    int folder_count = 0;
+
+    if(time_travel) {
+
+    //first build file system
+  	while((cmd = read_command_stream(c_stream))) {
+
+    	get_command_files(cmd,&file_system, &folder_count);
+
+    }
+
+    int i;
+
+    
+    for(i = 0; i < folder_count; i++) {
+    	printf("Folder %d:\n",i);
+    	int j;
+    	file_t* folder = file_system[i];
+    	file_t f;
+    	
+    	for(j = 0; (f = folder[j]) && f!=NULL;j++){
+    		printf("\tFile %d: %s\n",j,f->file_name);
+    	}
+    
+    }
+
+    //build dependency graph
+
+    //execute commands in parallel
+
+
+    } else {
+
+    	while ((cmd = read_command_stream (c_stream)))
+		    {
+		    
+		    	  exec_command (cmd);
+		    	  last_command_status = command_status(cmd);
+		    }
+    }
+
+
+	return last_command_status;
 }

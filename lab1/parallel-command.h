@@ -12,4 +12,14 @@ typedef struct {
 
 typedef file* file_t;
 
+file_t generate_file(char* file_name,bool is_output);
+
+void append_file(file_t** file_arr,file_t file,int* idx);
+file_t** append_folder(file_t*** file_system,int* idx);
+
+
+void traverse_command(command_t c,file_t*** file_system,file_t** folder,int* folder_count);
+
+void get_command_files(command_t c,file_t*** file_system,int *length);
+
 #endif

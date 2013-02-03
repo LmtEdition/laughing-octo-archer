@@ -55,7 +55,7 @@ file_t** append_folder(file_t*** file_system, int* idx) {
 	//return file_system[(*idx)-1];
 }
 
-void traverse_command(command_t c, file_t*** file_system, file_t** folder, int* folder_count) {
+void traverse_command(command_t c, file_t*** file_system, file_t** folder, int* file_count) {
 //traverse a top level command and add its files to its folder
 
   if(c == NULL) {
@@ -68,26 +68,26 @@ void traverse_command(command_t c, file_t*** file_system, file_t** folder, int* 
   case SEQUENCE_COMMAND:
   case OR_COMMAND: 
   case PIPE_COMMAND:
-    traverse_command(c->u.command[0],file_system,folder,folder_count);
-    traverse_command(c->u.command[1],file_system,folder,folder_count);
+    traverse_command(c->u.command[0],file_system,folder,file_count);
+    traverse_command(c->u.command[1],file_system,folder,file_count);
     break;
   case SUBSHELL_COMMAND:
-    traverse_command(c->u.subshell_command, file_system, folder,folder_count);
+    traverse_command(c->u.subshell_command, file_system, folder,file_count);
     break;
   case SIMPLE_COMMAND:
     //store input
     if (c->input) {
-      append_file(folder, generate_file(c->input,false), folder_count);
+      append_file(folder, generate_file(c->input,false), file_count);
     }
     //store output
     if (c->output){
-      append_file(folder, generate_file(c->input,true), folder_count);
+      append_file(folder, generate_file(c->output,true), file_count);
     }
 
     //assume all files in string are input
 	char **w = c->u.word;
     while (*w) {//iterate over array of strings
-      append_file(folder, generate_file(*w, false), folder_count);
+      append_file(folder, generate_file(*w, false), file_count);
       w++;
     }
 
@@ -96,6 +96,7 @@ void traverse_command(command_t c, file_t*** file_system, file_t** folder, int* 
    default: 
     return;
   }
+
   return;
 }
 
@@ -113,4 +114,8 @@ void get_command_files(command_t c, file_t*** file_system, int *idx) {
   file_t** folder = append_folder(file_system,idx); //create a folder holding all files for current command
 
   traverse_command(c,file_system,folder,&file_count);
+  // printf("%s",((*folder)[0])->file_name);
+  //append null file indicating end of folder
+  append_file(folder,NULL,&file_count);
+
 }
