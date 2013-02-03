@@ -135,7 +135,7 @@ void build_file_system(command_stream_t c_stream,file_t*** file_system,int* fold
       file_t* folder = (*file_system)[i];
       file_t f;
       
-      for(j = 0; (f = folder[j]) && f!=NULL;j++){
+      for(j = 0; (f = folder[j]);j++){
         printf("\tFile %d: %s\n",j,f->file_name);
       }
     }
@@ -143,9 +143,9 @@ void build_file_system(command_stream_t c_stream,file_t*** file_system,int* fold
 
 // Create a dependency graph of size sizexsize where size is the number of top level commands
 // dep_graph[row][col] means that the rowth command depends on the colth command
-bool **create_dep_graph(file_t ***file_system, int *size, int *cmd_dep_counts) {
+bool **create_dep_graph(file_t ***file_system, int *size, int **cmd_dep_counts) {
 	// allocate memory for dependency count array
-	cmd_dep_counts = (int *)checked_malloc(sizeof(int) * (*size)); 
+	*cmd_dep_counts = (int *)checked_malloc(sizeof(int) * (*size)); 
 
 	// allocate memory for size x size 2D dependency array
 	bool **dep_graph  = (bool **)checked_malloc(sizeof(bool *) * (*size));
@@ -156,7 +156,7 @@ bool **create_dep_graph(file_t ***file_system, int *size, int *cmd_dep_counts) {
 		for (j = 0; j < *size; j++) 
 			dep_graph[i][j] = false;
 		// init to 0 dependency counts for each command
-		cmd_dep_counts[i] = 0;
+		(*cmd_dep_counts)[i] = 0;
 	}
 
 
@@ -180,7 +180,7 @@ bool **create_dep_graph(file_t ***file_system, int *size, int *cmd_dep_counts) {
 					//printf("Cur: %s is_output:%d Prev: %s is_output:%d\n", f->file_name, f->is_output, prev_f->file_name, prev_f->is_output);
 					if (strcmp(f->file_name, prev_f->file_name) == 0 && (f->is_output || prev_f->is_output)) {
 						dep_graph[cmd_row][prev_cmd_row] = true;
-						cmd_dep_counts[cmd_row]++;
+						(*cmd_dep_counts)[cmd_row]++;
 					}
 				}
 			}
@@ -214,17 +214,17 @@ bool **create_dep_graph(file_t ***file_system, int *size, int *cmd_dep_counts) {
 		int y;
 		printf(" %d:", x);
 		for (y = 0; y < *size; y++) {
-			if (dep_graph[x][y])
-				printf(" 1 ");
-			else
-				printf(" 0 ");
+			//if (dep_graph[x][y])
+				printf(" %d ", dep_graph[x][y]);
+			//else
+				//printf(" 0 ");
 		}
 		printf("\n");
 	}
 	printf("\n");
 	
 	for (x = 0; x < *size; x++) {
-		printf("Command %d depends on %d commands.\n", x, cmd_dep_counts[x]);
+		printf("Command %d depends on %d commands.\n", x, (*cmd_dep_counts)[x]);
 	}
 	return dep_graph;
 }

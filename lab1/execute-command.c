@@ -291,10 +291,71 @@ execute_command (command_stream_t c_stream, bool time_travel)
     }
 
     //build dependency graph
-		int *cmd_dep_counts = NULL;
-		bool **dep_graph = create_dep_graph(&file_system, &folder_count, cmd_dep_counts);
+
+		int *wait_queue = NULL;
+		bool **dep_graph = create_dep_graph(&file_system, &folder_count, &wait_queue);
 
     //execute commands in parallel
+		int idx = 0;
+		int* commands_not_finished;
+
+        *commands_not_finished = folder_count;
+
+        pid_t p;
+
+		while (*commands_not_finished > 0) {
+
+			int i;
+            
+			for (i = 0; i < folder_count; i++) {
+
+				if ( (wait_queue[i] == 0) && (c_stream->cmds[i]->status == 2) ) {
+                    p = fork();
+				}
+
+				if (p == 0) {
+					idx = i;
+                    c_stream->cmds[i]->status = -1;
+					break;
+				} 
+			}
+	
+			if (p == 0) {
+				//execute_child
+				exec_command(c_stream->cmds[idx]);
+
+				//decrement all counts
+				int j;
+				for (j = 0; j < folder_count; j++)
+				{
+
+					if(dep_graph[j][idx]) {
+
+                        if(wait_queue[j] == 0) {
+                            fprintf(stderr,"Wait Queue[%d] is already empty!",j);
+                        }
+                        wait_queue[j]--;
+					}
+
+				}
+                //(*commands_not_finished)--;
+				_exit(0);
+			} else if (p > 0) {
+				//parent_process
+				//wait for child to complete
+				//update array and execute other waiting processes
+				int status_idx;
+				wait(&status_idx);
+                (*commands_not_finished)--;
+                last_command_status = status_idx;
+
+				
+
+			} else {
+				perror("Error!");
+				_exit(1);
+			}
+		}
 
     } else {
 

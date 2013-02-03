@@ -32,7 +32,7 @@ create_command(enum command_type type)
   command_t new_cmd = (command_t)checked_malloc(sizeof(struct command));
   new_cmd->type = type;
   
-  new_cmd->status = -1;
+  new_cmd->status = 2;
 
   new_cmd->input = NULL;
   new_cmd->output = NULL;
