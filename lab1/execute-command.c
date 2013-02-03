@@ -272,18 +272,34 @@ execute_command (command_stream_t c_stream, bool time_travel)
     if(time_travel) {
 
     //first build file system
-    	build_file_system(c_stream,&file_system, &folder_count);
+  	while((cmd = read_command_stream(c_stream))) {
+    	get_command_files(cmd,&file_system, &folder_count);
+    }
+
+    int i;
+
+    for(i = 0; i < folder_count; i++) {
+    	printf("Folder %d:\n",i);
+    	int j;
+    	file_t* folder = file_system[i];
+    	file_t f;
+    	
+    	for(j = 0; (f = folder[j]) && f!=NULL;j++){
+    		printf("\tFile %d: %s\n",j,f->file_name);
+    	}
+    
+    }
 
     //build dependency graph
+		int *cmd_dep_counts = NULL;
+		bool **dep_graph = create_dep_graph(&file_system, &folder_count, cmd_dep_counts);
 
     //execute commands in parallel
-
 
     } else {
 
     	while ((cmd = read_command_stream (c_stream)))
 		    {
-		    
 		    	  exec_command (cmd);
 		    	  last_command_status = command_status(cmd);
 		    }

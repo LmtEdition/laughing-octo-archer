@@ -1,8 +1,10 @@
 #include <errno.h>
 #include <error.h>
 #include <stdio.h>
+#include <string.h> //strcmp
 
 #include "command.h"
+
 
 #include "command-internals.h"
 #include "alloc.h" //memory allocation
@@ -121,18 +123,12 @@ void get_command_files(command_t c, file_t*** file_system, int *idx) {
 }
 
 void build_file_system(command_stream_t c_stream,file_t*** file_system,int* folder_count) {
-
     command_t cmd;
-
-     while((cmd = read_command_stream(c_stream))) {
-
+    while((cmd = read_command_stream(c_stream))) {
       get_command_files(cmd,file_system, folder_count);
-
     }
 
     int i;
-
-    
     for(i = 0; i < *folder_count; i++) {
       printf("Folder %d:\n",i);
       int j;
@@ -142,7 +138,93 @@ void build_file_system(command_stream_t c_stream,file_t*** file_system,int* fold
       for(j = 0; (f = folder[j]) && f!=NULL;j++){
         printf("\tFile %d: %s\n",j,f->file_name);
       }
-    
     }
+}
 
+// Create a dependency graph of size sizexsize where size is the number of top level commands
+// dep_graph[row][col] means that the rowth command depends on the colth command
+bool **create_dep_graph(file_t ***file_system, int *size, int *cmd_dep_counts) {
+	// allocate memory for dependency count array
+	cmd_dep_counts = (int *)checked_malloc(sizeof(int) * (*size)); 
+
+	// allocate memory for size x size 2D dependency array
+	bool **dep_graph  = (bool **)checked_malloc(sizeof(bool *) * (*size));
+	int i;
+	for (i = 0; i < *size; i++) {
+		dep_graph[i] = (bool *)checked_malloc(sizeof(bool) * (*size));
+		int j;
+		for (j = 0; j < *size; j++) 
+			dep_graph[i][j] = false;
+		// init to 0 dependency counts for each command
+		cmd_dep_counts[i] = 0;
+	}
+
+
+	// create dependency graph by 
+	int cmd_row;
+	for (cmd_row = 0; cmd_row < *size; cmd_row++) {
+		// current folder/file
+		file_t *folder = (*file_system)[cmd_row];
+		file_t f;
+		int file_idx;
+		for (file_idx = 0; (f = folder[file_idx]); file_idx++) {
+
+			int prev_cmd_row;
+			for (prev_cmd_row = 0; prev_cmd_row < cmd_row; prev_cmd_row++) {
+				// compare current folder/file to folder/files from previous commands
+				file_t *prev_folder = (*file_system)[prev_cmd_row];
+				file_t prev_f;
+				int prev_file_idx;
+				for (prev_file_idx = 0; (prev_f = prev_folder[prev_file_idx]); prev_file_idx++) {
+					// current command depends on prev command
+					//printf("Cur: %s is_output:%d Prev: %s is_output:%d\n", f->file_name, f->is_output, prev_f->file_name, prev_f->is_output);
+					if (strcmp(f->file_name, prev_f->file_name) == 0 && (f->is_output || prev_f->is_output)) {
+						dep_graph[cmd_row][prev_cmd_row] = true;
+						cmd_dep_counts[cmd_row]++;
+					}
+				}
+			}
+		}
+	}
+
+	// print dependency graph and dependency counts
+	
+	int x;
+	for (x = 0; x < *size; x++) {
+		int y;
+		printf("Command %d: ", x);
+		for (y = 0; y < *size; y++) {
+			if (dep_graph[x][y])
+				printf("cmd%d, ", y);
+		}
+		printf("\n");
+	}
+	printf("\n");
+
+	// matrix
+	printf("cmd");
+	for (x = 0; x < *size; x++) 
+		printf(" %d ", x);
+	printf("\n   ");
+	for (x = 0; x < *size; x++)
+		printf(" - ");
+
+	printf("\n");
+	for (x = 0; x < *size; x++) {
+		int y;
+		printf(" %d:", x);
+		for (y = 0; y < *size; y++) {
+			if (dep_graph[x][y])
+				printf(" 1 ");
+			else
+				printf(" 0 ");
+		}
+		printf("\n");
+	}
+	printf("\n");
+	
+	for (x = 0; x < *size; x++) {
+		printf("Command %d depends on %d commands.\n", x, cmd_dep_counts[x]);
+	}
+	return dep_graph;
 }
