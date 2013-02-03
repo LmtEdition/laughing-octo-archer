@@ -119,3 +119,30 @@ void get_command_files(command_t c, file_t*** file_system, int *idx) {
   append_file(folder,NULL,&file_count);
 
 }
+
+void build_file_system(command_stream_t c_stream,file_t*** file_system,int* folder_count) {
+
+    command_t cmd;
+
+     while((cmd = read_command_stream(c_stream))) {
+
+      get_command_files(cmd,file_system, folder_count);
+
+    }
+
+    int i;
+
+    
+    for(i = 0; i < *folder_count; i++) {
+      printf("Folder %d:\n",i);
+      int j;
+      file_t* folder = (*file_system)[i];
+      file_t f;
+      
+      for(j = 0; (f = folder[j]) && f!=NULL;j++){
+        printf("\tFile %d: %s\n",j,f->file_name);
+      }
+    
+    }
+
+}

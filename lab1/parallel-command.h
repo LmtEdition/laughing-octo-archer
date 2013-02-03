@@ -22,4 +22,6 @@ void traverse_command(command_t c,file_t*** file_system,file_t** folder,int* fol
 
 void get_command_files(command_t c,file_t*** file_system,int *length);
 
+void build_file_system(command_stream_t c_stream,file_t*** file_system,int* folder_count);
+
 #endif

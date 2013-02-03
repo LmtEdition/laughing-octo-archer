@@ -272,26 +272,7 @@ execute_command (command_stream_t c_stream, bool time_travel)
     if(time_travel) {
 
     //first build file system
-  	while((cmd = read_command_stream(c_stream))) {
-
-    	get_command_files(cmd,&file_system, &folder_count);
-
-    }
-
-    int i;
-
-    
-    for(i = 0; i < folder_count; i++) {
-    	printf("Folder %d:\n",i);
-    	int j;
-    	file_t* folder = file_system[i];
-    	file_t f;
-    	
-    	for(j = 0; (f = folder[j]) && f!=NULL;j++){
-    		printf("\tFile %d: %s\n",j,f->file_name);
-    	}
-    
-    }
+    	build_file_system(c_stream,&file_system, &folder_count);
 
     //build dependency graph
 
