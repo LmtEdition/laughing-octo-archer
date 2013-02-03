@@ -19,6 +19,42 @@
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
 
+void free_command(command_t c) {
+	if (c == NULL)
+		return;
+	switch (c->type):
+	{
+		case AND_COMMAND:
+		case SEQUENCE_COMMAND:
+		case OR_COMMAND:
+		case PIPE_COMMAND:
+		{
+			free_command(c->u.command[0]);
+			free_command(c->u.command[1]);
+			break;
+		}
+		case SIMPLE_COMMAND:
+		{
+			if (c->input)
+				free(c->input);
+			else if (c->output)
+				free(c->output);
+			char **w = c->u.word;
+			while (*w)
+				free(*w++);
+			free(c->u.word);
+			break;	
+		}
+		case SUBSHELL_COMMAND:
+			free_command(c->u.subshell_command);
+			break;
+		default:
+			fprintf(stderr, "Command has wrong type in free_command");
+	}
+	free(c);
+}
+
+
 int command_status (command_t c)
 {
   return c->status;
