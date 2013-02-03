@@ -1,5 +1,4 @@
 // UCLA CS 111 Lab 1 command execution
-
 #include "command.h"
 #include "command-internals.h"
 
@@ -12,6 +11,7 @@
 #include <unistd.h> //pipe,
 #include <stdbool.h> //bool
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -22,7 +22,7 @@
 void free_command(command_t c) {
 	if (c == NULL)
 		return;
-	switch (c->type):
+	switch (c->type)
 	{
 		case AND_COMMAND:
 		case SEQUENCE_COMMAND:

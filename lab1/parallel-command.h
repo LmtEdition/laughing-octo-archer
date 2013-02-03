@@ -1,3 +1,6 @@
+#ifndef PARALLEL_H
+#define PARALLEL_H
+
 #include <stdbool.h>
 
 typedef struct {
@@ -8,3 +11,5 @@ typedef struct {
 } file;
 
 typedef file* file_t;
+
+#endif

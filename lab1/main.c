@@ -8,9 +8,6 @@
 
 #include "command.h"
 
-#include "command-internals.h"
-#include "alloc.h" //memory allocation
-
 static char const *program_name;
 static char const *script_name;
 
