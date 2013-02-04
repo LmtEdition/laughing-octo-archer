@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <error.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h> //strcmp
 #include <stdlib.h> //free
 
@@ -152,6 +153,21 @@ void free_dep_graph_and_wait_queue(bool ***dep_graph, int size, int **wait_queue
     free((*dep_graph)[i]);
   }
   free(*dep_graph);
+}
+
+void clean_file_system(file_t*** file_system,int* folder_count){
+
+    
+    int i;
+    for(i = 0; i < *folder_count; i++) {
+      
+      //free all folders
+      free((*file_system)[i]);
+     
+    }
+
+    //free file system
+    free((*file_system));
 
 }
 
