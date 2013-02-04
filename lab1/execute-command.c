@@ -335,6 +335,8 @@ execute_command (command_stream_t c_stream, bool time_travel)
           }
         }
       }
+      // free file system and dependency graph and wait queue
+      free_dep_graph_and_wait_queue(&dep_graph, folder_count, &wait_queue);
     } else {
 
       while ((cmd = read_command_stream (c_stream))) {

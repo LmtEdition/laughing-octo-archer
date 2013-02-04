@@ -2,6 +2,7 @@
 #include <error.h>
 #include <stdio.h>
 #include <string.h> //strcmp
+#include <stdlib.h> //free
 
 #include "command.h"
 
@@ -141,11 +142,24 @@ void build_file_system(command_stream_t c_stream,file_t*** file_system,int* fold
     }*/
 }
 
+// free the dependency graph
+void free_dep_graph_and_wait_queue(bool ***dep_graph, int size, int **wait_queue) {
+  // free wait_queue
+  free(*wait_queue);
+
+  int i;
+  for (i = 0; i < size; i++) {
+    free((*dep_graph)[i]);
+  }
+  free(*dep_graph);
+
+}
+
 // Create a dependency graph of size sizexsize where size is the number of top level commands
 // dep_graph[row][col] means that the rowth command depends on the colth command
-bool **create_dep_graph(file_t ***file_system, int *size, int **cmd_dep_counts) {
+bool **create_dep_graph(file_t ***file_system, int *size, int **wait_queue) {
 	// allocate memory for dependency count array
-	*cmd_dep_counts = (int *)checked_malloc(sizeof(int) * (*size)); 
+	*wait_queue = (int *)checked_malloc(sizeof(int) * (*size)); 
 
 	// allocate memory for size x size 2D dependency array
 	bool **dep_graph  = (bool **)checked_malloc(sizeof(bool *) * (*size));
@@ -156,7 +170,7 @@ bool **create_dep_graph(file_t ***file_system, int *size, int **cmd_dep_counts) 
 		for (j = 0; j < *size; j++) 
 			dep_graph[i][j] = false;
 		// init to 0 dependency counts for each command
-		(*cmd_dep_counts)[i] = 0;
+		(*wait_queue)[i] = 0;
 	}
 
 
@@ -180,7 +194,7 @@ bool **create_dep_graph(file_t ***file_system, int *size, int **cmd_dep_counts) 
 					//printf("Cur: %s is_output:%d Prev: %s is_output:%d\n", f->file_name, f->is_output, prev_f->file_name, prev_f->is_output);
 					if (strcmp(f->file_name, prev_f->file_name) == 0 && (f->is_output || prev_f->is_output)) {
 						dep_graph[cmd_row][prev_cmd_row] = true;
-						(*cmd_dep_counts)[cmd_row]++;
+						(*wait_queue)[cmd_row]++;
 					}
 				}
 			}
@@ -224,7 +238,7 @@ bool **create_dep_graph(file_t ***file_system, int *size, int **cmd_dep_counts) 
 	printf("\n");
 	
 	for (x = 0; x < *size; x++) {
-		printf("Command %d depends on %d commands.\n", x, (*cmd_dep_counts)[x]);
+		printf("Command %d depends on %d commands.\n", x, (*wait_queue)[x]);
 	}
   */
 	return dep_graph;
