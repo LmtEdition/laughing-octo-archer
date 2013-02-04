@@ -120,137 +120,136 @@ void exec_simple_command(command_t c, int* fd_i, int* fd_o, bool exec) {
 void
 exec_command(command_t c) {
     if(c == NULL)
-		return;
+			return;
     switch(c->type) {
         //binary commands
-        case AND_COMMAND:
-            //If the left side evaluates to true we must also evaluate the left side 
-			////Otherwise return false indicating that command failed 
-			exec_command(c->u.command[0]);
-			if (command_status(c->u.command[0]) == 0) {
-				exec_command(c->u.command[1]);  
-				c->status = command_status(c->u.command[1]);
-			}
-			else
-				c->status = command_status(c->u.command[0]);
-			break;
-
-        case OR_COMMAND:
-            // If the left side is true return 0 (success immediately)
-            // Otherwise also evaluate right side
-			exec_command(c->u.command[0]);
-			if (command_status(c->u.command[0]) == 1) {
-				exec_command(c->u.command[1]);  
-				c->status = command_status(c->u.command[1]);
-			}
-			else
-				c->status = command_status(c->u.command[0]);
-			break;
-
-        case SEQUENCE_COMMAND:
-            //execute left
-            exec_command(c->u.command[0]);
-
-            //execute right
-            exec_command(c->u.command[1]);
-			c->status = command_status(c->u.command[0]) || command_status(c->u.command[1]);
-			break;
-        
-        case PIPE_COMMAND:
-		{		
-			int fd[2];
-			pid_t childpid;
-
-			pipe(fd);
-
-			if ((childpid = fork()) == -1) {
-				c->status = 1;
-				break;
-			}
-
-			if (childpid == 0) {
-				// child process closes read/input side of pipe
-				close(fd[0]);
-            
-				// redirect write/output side of pipe stdout
-				dup2(fd[1], 1);
+      case AND_COMMAND:
+          //If the left side evaluates to true we must also evaluate the left side 
+					////Otherwise return false indicating that command failed 
 				exec_command(c->u.command[0]);
-				close(fd[1]);
-
-				if (command_status(c->u.command[0]) == 0)
-					_exit(0);
-				else
-					_exit(1);
-			} else {
-				// parent process closes write/output side of pipe
-				close(fd[1]);
-
-				// redirect read/input side of pipe to stdin
-				dup2(fd[0], 0);
-
-				exec_command(c->u.command[1]);
-				close(fd[0]);
-			
-				int status;
-		 	    waitpid(childpid, &status, 0);		
-
-				// execute failed
-				if (WEXITSTATUS(status) == 1 || command_status(c->u.command[1]) != 0)
-					c->status = 1;	
-				else 
-					c->status = 0;
-			}
-			break;
-		}	
-        //unary commands
-        case SIMPLE_COMMAND:
-		{
-            //file io
-            //if input redirection <
-            int fd_i = -1, fd_o = -1;
-
-			// if exec keyword is found, then do not fork a child process
-			if (strcmp(c->u.word[0], "exec") == 0) 
-				exec_simple_command(c, &fd_i, &fd_o, true);
-
-					
-            //finally execute function, must fork or execvp exits process
-			pid_t childpid;
-			if ((childpid = fork()) == -1) {
-				fprintf(stderr, "%s\n", strerror(errno));
-				c->status = 1;			
-				break;
-			}
-
-			// child process
-			if (childpid == 0) {
-				exec_simple_command(c, &fd_i, &fd_o, false);
-				_exit(1);
-			// parent process
-			} else { 
-				int status;
-		 	    waitpid(childpid, &status, 0);		
-
-				if (fd_i != 1)
-					close(fd_i);
-				if (fd_o != 1)
-					close(fd_o);
-
-				// execvp failed and child process exited correctly
-				if (WEXITSTATUS(status) == 1) {
-					//printf("false\n");
-					c->status = 1;
-				} else {
-					//printf("true\n");
-					c->status = 0;
+				if (command_status(c->u.command[0]) == 0) {
+					exec_command(c->u.command[1]);  
+					c->status = command_status(c->u.command[1]);
 				}
-			}
-			break;	
-        } 
-        case SUBSHELL_COMMAND:
-            exec_command(c->u.subshell_command);
-			c->status = command_status(c->u.subshell_command);
-			break;
+				else
+					c->status = command_status(c->u.command[0]);
+				break;
+
+      case OR_COMMAND:
+				// If the left side is true return 0 (success immediately)
+				// Otherwise also evaluate right side
+				exec_command(c->u.command[0]);
+				if (command_status(c->u.command[0]) == 1) {
+					exec_command(c->u.command[1]);  
+					c->status = command_status(c->u.command[1]);
+				}
+				else
+					c->status = command_status(c->u.command[0]);
+				break;
+
+      case SEQUENCE_COMMAND:
+				//execute left
+				exec_command(c->u.command[0]);
+
+				//execute right
+				exec_command(c->u.command[1]);
+		 		c->status = command_status(c->u.command[0]) || command_status(c->u.command[1]);
+				break;
+        
+      case PIPE_COMMAND:
+			{		
+				int fd[2];
+				pid_t childpid;
+
+				pipe(fd);
+
+				if ((childpid = fork()) == -1) {
+					c->status = 1;
+					break;
+				}
+
+				if (childpid == 0) {
+					// child process closes read/input side of pipe
+					close(fd[0]);
+							
+					// redirect write/output side of pipe stdout
+					dup2(fd[1], 1);
+					exec_command(c->u.command[0]);
+					close(fd[1]);
+
+					if (command_status(c->u.command[0]) == 0)
+						_exit(0);
+					else
+						_exit(1);
+				} else {
+					// parent process closes write/output side of pipe
+					close(fd[1]);
+
+					// redirect read/input side of pipe to stdin
+					dup2(fd[0], 0);
+
+					exec_command(c->u.command[1]);
+					close(fd[0]);
+				
+					int status;
+						waitpid(childpid, &status, 0);		
+
+					// execute failed
+					if (WEXITSTATUS(status) == 1 || command_status(c->u.command[1]) != 0)
+						c->status = 1;	
+					else 
+						c->status = 0;
+				}
+				break;
+			}	
+        //unary commands
+      case SIMPLE_COMMAND:
+			{
+				//file io
+				//if input redirection <
+				int fd_i = -1, fd_o = -1;
+
+				// if exec keyword is found, then do not fork a child process
+				if (strcmp(c->u.word[0], "exec") == 0) 
+					exec_simple_command(c, &fd_i, &fd_o, true);
+
+        //finally execute function, must fork or execvp exits process
+				pid_t childpid;
+				if ((childpid = fork()) == -1) {
+					fprintf(stderr, "%s\n", strerror(errno));
+					c->status = 1;			
+					break;
+				}
+
+				// child process
+				if (childpid == 0) {
+					exec_simple_command(c, &fd_i, &fd_o, false);
+					_exit(1);
+				// parent process
+				} else { 
+					int status;
+						waitpid(childpid, &status, 0);		
+
+					if (fd_i != 1)
+						close(fd_i);
+					if (fd_o != 1)
+						close(fd_o);
+
+					// execvp failed and child process exited correctly
+					if (WEXITSTATUS(status) == 1) {
+						//printf("false\n");
+						c->status = 1;
+					} else {
+						//printf("true\n");
+						c->status = 0;
+					}
+				}
+				break;	
+      } 
+      case SUBSHELL_COMMAND:
+        exec_command(c->u.subshell_command);
+				c->status = command_status(c->u.subshell_command);
+				break;
 		default:
 			c->status = -1;
     }
@@ -271,92 +270,87 @@ execute_command (command_stream_t c_stream, bool time_travel)
 
     if(time_travel) {
 
-    //first build file system
-  	while((cmd = read_command_stream(c_stream))) {
-    	get_command_files(cmd,&file_system, &folder_count);
-    }
-
-    int i;
-
-    for(i = 0; i < folder_count; i++) {
-    	printf("Folder %d:\n",i);
-    	int j;
-    	file_t* folder = file_system[i];
-    	file_t f;
-    	
-    	for(j = 0; (f = folder[j]) && f!=NULL;j++){
-    		printf("\tFile %d: %s\n",j,f->file_name);
-    	}
-    
-    }
-
-    //build dependency graph
-
-		int *wait_queue = NULL;
-		bool **dep_graph = create_dep_graph(&file_system, &folder_count, &wait_queue);
-
-    //execute commands in parallel
-		int idx = 0;
-		int* commands_not_finished;
-
-        *commands_not_finished = folder_count;
-
-        pid_t p;
-
-		while (*commands_not_finished > 0) {
+			//first build file system
+			while((cmd = read_command_stream(c_stream))) {
+				get_command_files(cmd,&file_system, &folder_count);
+			}
 
 			int i;
-            
-			for (i = 0; i < folder_count; i++) {
 
-				if ( (wait_queue[i] == 0) && (c_stream->cmds[i]->status == 2) ) {
-                    p = fork();
-				}
-
-				if (p == 0) {
-					idx = i;
-                    c_stream->cmds[i]->status = -1;
-					break;
-				} 
-			}
-	
-			if (p == 0) {
-				//execute_child
-				exec_command(c_stream->cmds[idx]);
-
-				//decrement all counts
+			for(i = 0; i < folder_count; i++) {
+				printf("Folder %d:\n",i);
 				int j;
-				for (j = 0; j < folder_count; j++)
-				{
-
-					if(dep_graph[j][idx]) {
-
-                        if(wait_queue[j] == 0) {
-                            fprintf(stderr,"Wait Queue[%d] is already empty!",j);
-                        }
-                        wait_queue[j]--;
-					}
-
-				}
-                //(*commands_not_finished)--;
-				_exit(0);
-			} else if (p > 0) {
-				//parent_process
-				//wait for child to complete
-				//update array and execute other waiting processes
-				int status_idx;
-				wait(&status_idx);
-                (*commands_not_finished)--;
-                last_command_status = status_idx;
-
+				file_t* folder = file_system[i];
+				file_t f;
 				
-
-			} else {
-				perror("Error!");
-				_exit(1);
+				for(j = 0; (f = folder[j]) && f!=NULL;j++){
+					printf("\tFile %d: %s\n",j,f->file_name);
+				}
+			
 			}
-		}
 
+			//build dependency graph
+
+			int *wait_queue = NULL;
+			bool **dep_graph = create_dep_graph(&file_system, &folder_count, &wait_queue);
+
+			//execute commands in parallel
+			int commands_not_finished = folder_count;
+
+			pid_t p;
+
+			while (commands_not_finished > 0) {
+
+				int i;
+							
+				// fork child processes for runnable commands
+				for (i = 0; i < folder_count; i++) {
+
+					if ( (wait_queue[i] == 0) && (c_stream->cmds[i]->status == 2) ) {
+
+						p = fork();
+						if (p == 0) {
+
+							// child process executes command
+							exec_command(c_stream->cmds[i]);
+							_exit(c_stream->cmds[i]->status);
+
+						} else if (p > 0) {
+
+							// parent process set the status to unknown == still running
+							c_stream->cmds[i]->status = -1;
+							commands_not_finished--;
+
+						} else {
+							perror("Error!");
+							_exit(1);
+						}
+					}
+				}
+
+				// wait for all children to finish, not good for parallelization
+				int status;
+				while (wait(&status) > 0) {}
+				last_command_status = status;
+
+				for (i = 0; i < folder_count; i++) {
+					if (c_stream->cmds[i]->status == -1) {
+						c_stream->cmds[i]->status = 0;
+						//decrement all counts
+						int j;
+						for (j = 0; j < folder_count; j++) {
+
+							if (dep_graph[j][i]) {
+
+								if (wait_queue[j] == 0) {
+									fprintf(stderr,"Wait Queue[%d] is already empty!",j);
+								}
+								wait_queue[j]--;
+							}
+						}
+					}
+				}
+			}
     } else {
 
     	while ((cmd = read_command_stream (c_stream)))
