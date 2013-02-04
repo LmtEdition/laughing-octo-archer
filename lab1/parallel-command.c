@@ -128,7 +128,7 @@ void build_file_system(command_stream_t c_stream,file_t*** file_system,int* fold
       get_command_files(cmd,file_system, folder_count);
     }
 
-    int i;
+    /*int i;
     for(i = 0; i < *folder_count; i++) {
       printf("Folder %d:\n",i);
       int j;
@@ -138,7 +138,7 @@ void build_file_system(command_stream_t c_stream,file_t*** file_system,int* fold
       for(j = 0; (f = folder[j]);j++){
         printf("\tFile %d: %s\n",j,f->file_name);
       }
-    }
+    }*/
 }
 
 // Create a dependency graph of size sizexsize where size is the number of top level commands
@@ -187,7 +187,7 @@ bool **create_dep_graph(file_t ***file_system, int *size, int **cmd_dep_counts) 
 		}
 	}
 
-	// print dependency graph and dependency counts
+	/*// print dependency graph and dependency counts
 	
 	int x;
 	for (x = 0; x < *size; x++) {
@@ -226,5 +226,6 @@ bool **create_dep_graph(file_t ***file_system, int *size, int **cmd_dep_counts) 
 	for (x = 0; x < *size; x++) {
 		printf("Command %d depends on %d commands.\n", x, (*cmd_dep_counts)[x]);
 	}
+  */
 	return dep_graph;
 }

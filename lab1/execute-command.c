@@ -268,98 +268,80 @@ execute_command (command_stream_t c_stream, bool time_travel)
     file_t** file_system = NULL;
     int folder_count = 0;
 
-    if(time_travel) {
+    if (time_travel) {
 
-			//first build file system
-			while((cmd = read_command_stream(c_stream))) {
-				get_command_files(cmd,&file_system, &folder_count);
-			}
+      //first build file system
+      build_file_system(c_stream, &file_system, &folder_count);
 
-			int i;
+      //build dependency graph
+      int *wait_queue = NULL;
+      bool **dep_graph = create_dep_graph(&file_system, &folder_count, &wait_queue);
 
-			for(i = 0; i < folder_count; i++) {
-				printf("Folder %d:\n",i);
-				int j;
-				file_t* folder = file_system[i];
-				file_t f;
-				
-				for(j = 0; (f = folder[j]) && f!=NULL;j++){
-					printf("\tFile %d: %s\n",j,f->file_name);
-				}
-			
-			}
+      //execute commands in parallel
+      int commands_not_finished = folder_count;
 
-			//build dependency graph
+      pid_t p;
 
-			int *wait_queue = NULL;
-			bool **dep_graph = create_dep_graph(&file_system, &folder_count, &wait_queue);
+      while (commands_not_finished > 0) {
 
-			//execute commands in parallel
-			int commands_not_finished = folder_count;
+        int i;
+              
+        // fork child processes for runnable commands
+        for (i = 0; i < folder_count; i++) {
 
-			pid_t p;
+          if ( (wait_queue[i] == 0) && (c_stream->cmds[i]->status == 2) ) {
 
-			while (commands_not_finished > 0) {
+            p = fork();
+            if (p == 0) {
 
-				int i;
-							
-				// fork child processes for runnable commands
-				for (i = 0; i < folder_count; i++) {
+              // child process executes command
+              exec_command(c_stream->cmds[i]);
+              _exit(c_stream->cmds[i]->status);
 
-					if ( (wait_queue[i] == 0) && (c_stream->cmds[i]->status == 2) ) {
+            } else if (p > 0) {
 
-						p = fork();
-						if (p == 0) {
+              // parent process set the status to unknown == still running
+              c_stream->cmds[i]->status = -1;
+              commands_not_finished--;
 
-							// child process executes command
-							exec_command(c_stream->cmds[i]);
-							_exit(c_stream->cmds[i]->status);
+            } else {
+              perror("Error!");
+              _exit(1);
+            }
+          }
+        }
 
-						} else if (p > 0) {
+        // wait for all children to finish, not good for parallelization
+        int status;
+        while (wait(&status) > 0) {}
+        last_command_status = status;
 
-							// parent process set the status to unknown == still running
-							c_stream->cmds[i]->status = -1;
-							commands_not_finished--;
+        // update statuses and wait queue
+        for (i = 0; i < folder_count; i++) {
+          if (c_stream->cmds[i]->status == -1) {
+            c_stream->cmds[i]->status = 0;
+            //decrement all counts
+            int j;
+            for (j = 0; j < folder_count; j++) {
 
-						} else {
-							perror("Error!");
-							_exit(1);
-						}
-					}
-				}
+              if (dep_graph[j][i]) {
 
-				// wait for all children to finish, not good for parallelization
-				int status;
-				while (wait(&status) > 0) {}
-				last_command_status = status;
-
-				for (i = 0; i < folder_count; i++) {
-					if (c_stream->cmds[i]->status == -1) {
-						c_stream->cmds[i]->status = 0;
-						//decrement all counts
-						int j;
-						for (j = 0; j < folder_count; j++) {
-
-							if (dep_graph[j][i]) {
-
-								if (wait_queue[j] == 0) {
-									fprintf(stderr,"Wait Queue[%d] is already empty!",j);
-								}
-								wait_queue[j]--;
-							}
-						}
-					}
-				}
-			}
+                if (wait_queue[j] == 0) {
+                  fprintf(stderr,"Wait Queue[%d] is already empty!",j);
+                }
+                wait_queue[j]--;
+              }
+            }
+          }
+        }
+      }
     } else {
 
-    	while ((cmd = read_command_stream (c_stream)))
-		    {
-		    	  exec_command (cmd);
-		    	  last_command_status = command_status(cmd);
-		    }
+      while ((cmd = read_command_stream (c_stream))) {
+        exec_command (cmd);
+        last_command_status = command_status(cmd);
+      }
     }
 
-
-	return last_command_status;
+    return last_command_status;
 }
