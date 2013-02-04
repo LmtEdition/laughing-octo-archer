@@ -342,6 +342,10 @@ execute_command (command_stream_t c_stream, bool time_travel)
         last_command_status = command_status(cmd);
       }
     }
+    
+    int x;
+    for (x = 0; x < c_stream->size; x++)
+      free_command(c_stream->cmds[x]);
 
     return last_command_status;
 }
