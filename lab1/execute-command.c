@@ -41,8 +41,9 @@ void free_command(command_t c) {
 			else if (c->output)
 				free(c->output);
 			char **w = c->u.word;
-			while (*w)
-				free(*w++);
+      free(*w);
+			while (*++w)
+				free(*w);
 			free(c->u.word);
 			break;	
 		}
@@ -177,10 +178,14 @@ exec_command(command_t c) {
 					exec_command(c->u.command[0]);
 					close(fd[1]);
 
-					if (command_status(c->u.command[0]) == 0)
+					if (command_status(c->u.command[0]) == 0) {
+            free_command(c);
 						_exit(0);
-					else
+          }
+					else {
+            free_command(c);
 						_exit(1);
+          }
 				} else {
 					// parent process closes write/output side of pipe
 					close(fd[1]);
@@ -230,9 +235,9 @@ exec_command(command_t c) {
 					int status;
 						waitpid(childpid, &status, 0);		
 
-					if (fd_i != 1)
+					if (fd_i != -1)
 						close(fd_i);
-					if (fd_o != 1)
+					if (fd_o != -1)
 						close(fd_o);
 
 					// execvp failed and child process exited correctly
@@ -276,6 +281,7 @@ execute_command (command_stream_t c_stream, bool time_travel)
       //build dependency graph
       int *wait_queue = NULL;
       bool **dep_graph = create_dep_graph(&file_system, &folder_count, &wait_queue);
+      clean_file_system(&file_system, &folder_count);
 
       //execute commands in parallel
       int commands_not_finished = folder_count;
@@ -296,7 +302,14 @@ execute_command (command_stream_t c_stream, bool time_travel)
 
               // child process executes command
               exec_command(c_stream->cmds[i]);
-              _exit(c_stream->cmds[i]->status);
+              free_dep_graph_and_wait_queue(&dep_graph, folder_count, &wait_queue);
+                  int x, child_status;
+                  child_status = c_stream->cmds[i]->status; 
+                       for (x = 0; x < c_stream->size; x++)
+                         free_command(c_stream->cmds[x]);
+                       free(c_stream->cmds);
+                       free(c_stream);
+              _exit(child_status);
 
             } else if (p > 0) {
 
@@ -337,6 +350,7 @@ execute_command (command_stream_t c_stream, bool time_travel)
       }
       // free file system and dependency graph and wait queue
       free_dep_graph_and_wait_queue(&dep_graph, folder_count, &wait_queue);
+
     } else {
 
       while ((cmd = read_command_stream (c_stream))) {

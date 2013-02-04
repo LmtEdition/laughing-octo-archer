@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "command.h"
+#include "command-internals.h"
 
 static char const *program_name;
 static char const *script_name;
@@ -52,6 +53,8 @@ main (int argc, char **argv)
   command_stream_t command_stream =
     make_command_stream (get_next_byte, script_stream);
 
+  fclose(script_stream);
+
   command_t last_command = NULL;
   command_t command;
 
@@ -80,9 +83,9 @@ main (int argc, char **argv)
 
   }
 
+  free(command_stream->cmds);
   free(command_stream);
 
-  fclose(script_stream);
   //return print_tree || !last_command ? 0 : command_status (last_command);
   return print_tree || !last_command ? 0 : last_command_status;
 }

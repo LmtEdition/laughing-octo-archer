@@ -159,11 +159,15 @@ void clean_file_system(file_t*** file_system,int* folder_count){
 
     
     int i;
+    int j;
     for(i = 0; i < *folder_count; i++) {
-      
       //free all folders
+      file_t f;
+      for (j = 0; ( f = (*file_system)[i][j] ); j++)
+        free(f);
+      // NULL file at the end of each folder but it was malloced so need to free it
+      free(f);
       free((*file_system)[i]);
-     
     }
 
     //free file system
