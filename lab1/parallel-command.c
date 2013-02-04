@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <error.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h> //strcmp
 
 #include "command.h"
@@ -139,6 +140,22 @@ void build_file_system(command_stream_t c_stream,file_t*** file_system,int* fold
         printf("\tFile %d: %s\n",j,f->file_name);
       }
     }*/
+}
+
+void clean_file_system(file_t*** file_system,int* folder_count){
+
+    
+    int i;
+    for(i = 0; i < *folder_count; i++) {
+      
+      //free all folders
+      free((*file_system)[i]);
+     
+    }
+
+    //free file system
+    free((*file_system));
+
 }
 
 // Create a dependency graph of size sizexsize where size is the number of top level commands
