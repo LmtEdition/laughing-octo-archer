@@ -18,7 +18,20 @@ that should be optimized and refactored to be more understandable.
 Lab1b
 
 Implementation:
-Made a bunch of switch statements in a recursive execute_command function.
+    1. Used switch statements in a recursive execute_command function that performs a post order traversal on the command.
+    2. forked from parent process to perform execvp 
+    3. used dup2 for redirection
+    4. set command statuses of after evaluation
 
 Sources:
 http://www.tldp.org/LDP/lpg/node11.html
+
+Lab1c
+
+1. Modified execute_command to take in the whole command stream and return the last_status 
+
+2. If time travel(parallelizing execution)
+   a. Extract all files from command tree and store in a 2d array or "file system" representing the files that belong to a command
+   b. From these extracted files, build a 2d matrix representing a dependency graph. Assumption is that a file only depends on files that occur before it in its containing script. 
+   c. Create a waiting queue representing the number of commands a command is waiting on. When ever a child process is finished, the main process will update this queue and run non dependent files.
+   NOTE: The code for generating the dependency graph and file system is written in parallel-command.h and parallel-command.c
