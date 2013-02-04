@@ -15,15 +15,20 @@ mv hageilha hagiehlag
 ls -agehialg
 cat < eagaegag
 sort ahegiagehl
+diff aeghil agheiaghi
+rm aeghieahl
 EOF
 
 cat >test.exp <<'EOF'
-blahNo such file or directory
+No such file or directory
 mv: cannot stat `hageilha': No such file or directory
 ls: invalid option -- 'e'
 Try `ls --help' for more information.
 No such file or directory
 sort: open failed: ahegiagehl: No such file or directory
+diff: aeghil: No such file or directory
+diff: agheiaghi: No such file or directory
+rm: cannot remove `aeghieahl': No such file or directory
 EOF
 
 ../timetrash test.sh 2>test.out || exit

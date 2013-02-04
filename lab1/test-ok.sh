@@ -40,6 +40,8 @@ cat < /etc/passwd |
   tr a-z A-Z | 
     sort -u > out || 
       echo sort failed!
+
+exec echo exec
 EOF
 
 cat >test.exp <<'EOF'
@@ -49,6 +51,7 @@ a b c
 cat
 ORgibberish
 sequence
+exec
 EOF
 
 ../timetrash test.sh >test.out 2>test.err || exit
