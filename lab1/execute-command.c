@@ -179,12 +179,11 @@ exec_command(command_t c) {
 					exec_command(c->u.command[0]);
 					close(fd[1]);
 
+          free_command(c);
 					if (command_status(c->u.command[0]) == 0) {
-            free_command(c);
 						_exit(0);
           }
 					else {
-            free_command(c);
 						_exit(1);
           }
 				} else {
@@ -230,6 +229,8 @@ exec_command(command_t c) {
 				// child process
 				if (childpid == 0) {
 					exec_simple_command(c, &fd_i, &fd_o, false);
+          free_command(c);
+
 					_exit(1);
 				// parent process
 				} else { 
@@ -314,6 +315,7 @@ execute_command (command_stream_t c_stream, bool time_travel)
                 free_command(c_stream->cmds[x]);
               free(c_stream->cmds);
               free(c_stream);
+              free(command_pids);
               _exit(child_status);
 
             } else if (pid > 0) {
@@ -374,6 +376,7 @@ execute_command (command_stream_t c_stream, bool time_travel)
                         free_command(c_stream->cmds[x]);
                       free(c_stream->cmds);
                       free(c_stream);
+                      free(command_pids);
                       _exit(child_status);
 
                     } else if (pid > 0) {
