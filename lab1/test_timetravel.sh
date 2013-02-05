@@ -53,7 +53,34 @@ echo "Execution took: $TIME_2 seconds"
 echo "Time travel took: $TIME_T_2 seconds"
 
 rm output
-(("$TIME_T_2" <=  "$TIME_2")) && echo "Time travel is faster" && exit
+(("$TIME_T_2" <=  "$TIME_2")) && echo "Time travel is faster"
 
+#RUN TEST 4
+
+START_3=$(date +%s)
+
+    ./timetrash test4.sh
+
+END_3=$(date +%s)
+
+TIME_3=$(($END_3 - $START_3))
+
+
+START_T_3=$(date +%s)
+
+    ./timetrash -t test4.sh
+
+END_T_3=$(date +%s)
+
+TIME_T_3=$(($END_T_3 - $START_T_3))
+
+DIFF_3=$(($TIME_T_3 - $TIME_3))
+
+echo "Execution took: $TIME_3 seconds"
+
+echo "Time travel took: $TIME_T_3 seconds"
+
+rm out out.txt
+(("$TIME_T_3" <=  "$TIME_3")) && echo "Time travel is faster" && exit
 #exits with failure if slower
 exit 1

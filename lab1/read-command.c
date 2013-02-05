@@ -197,7 +197,7 @@ get_simple_command(int (*get_next_byte) (void *), void *filestream, int line_num
 	  if (simple_cmd_buf[i] != ' ')
 		  break;
 		  
-  // if a whitespace wasn't removed
+  // if a whitespace was removed
   if (i != buf_idx-1)
 	  ungetc(' ', filestream);
 
@@ -313,7 +313,7 @@ get_infix_commands(int (*get_next_byte) (void *), void *filestream, int *line_nu
         //Add sequence command
         add_command_to_infix(&infix_arr, &infix_idx, &infix_size, SEQUENCE_COMMAND, &prev_type); 
       }
-      else if (num_sub_shells == 0 && prev_type == ';')
+      else if (num_sub_shells == 0 && prev_type == SEQUENCE_COMMAND)
       {
         // remove previous sequence command
         if (infix_idx > 0)
@@ -375,6 +375,7 @@ get_infix_commands(int (*get_next_byte) (void *), void *filestream, int *line_nu
         infix_arr = (command_t *)checked_grow_alloc(infix_arr, &infix_size); 
 
       infix_arr[infix_idx] = get_simple_command(get_next_byte, filestream, *line_number);
+
       infix_idx++;
 
       prev_type = SIMPLE_COMMAND;
@@ -446,8 +447,32 @@ get_infix_commands(int (*get_next_byte) (void *), void *filestream, int *line_nu
           //CHECK LAST COMMAND IS VALID BEFORE ENDING
           check_end_command_error(num_sub_shells, prev_type, *line_number);
         }
-        else
+        else {
           (*line_number)++;
+          prev_byte_is_space = true;
+          if (infix_idx == 0)
+            continue; 
+
+          get_more_cmds = continue_after_newline(prev_type, num_sub_shells);
+
+          if (num_sub_shells > 0 && (prev_type == SIMPLE_COMMAND || prev_type == RIGHT_PAREN))
+          {
+            //Add sequence command
+            add_command_to_infix(&infix_arr, &infix_idx, &infix_size, SEQUENCE_COMMAND, &prev_type); 
+          }
+          else if (num_sub_shells == 0 && prev_type == SEQUENCE_COMMAND)
+          {
+            // remove previous sequence command
+            if (infix_idx > 0)
+              infix_idx--;
+            if (infix_arr[infix_idx]->type == SEQUENCE_COMMAND)
+            {
+              free(infix_arr[infix_idx]);
+              if (infix_idx > 0)
+                prev_type = infix_arr[infix_idx-1]->type;
+            }
+          }
+        }
       }
       else
         print_error(*line_number, "invalid # after a non-whitespace character");
@@ -800,6 +825,7 @@ make_command_stream (int (*get_next_byte) (void *),
       stream->cmds = checked_grow_alloc(stream->cmds, &byte_size);
 
     postfix = create_postfix(infix_arr, &infix_len);
+
     stream->cmds[stream->size] = create_binary_tree(postfix, infix_len);
 		stream->size++;
 

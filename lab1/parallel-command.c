@@ -199,14 +199,18 @@ bool **create_dep_graph(file_t ***file_system, int *size, int **wait_queue) {
 	for (cmd_row = 0; cmd_row < *size; cmd_row++) {
 		// current folder/file
 		file_t *folder = (*file_system)[cmd_row];
-		file_t f;
-		int file_idx;
-		for (file_idx = 0; (f = folder[file_idx]); file_idx++) {
 
-			int prev_cmd_row;
-			for (prev_cmd_row = 0; prev_cmd_row < cmd_row; prev_cmd_row++) {
-				// compare current folder/file to folder/files from previous commands
-				file_t *prev_folder = (*file_system)[prev_cmd_row];
+    // compare current row's files to each prevoius row's files
+		int prev_cmd_row;
+		for (prev_cmd_row = 0; prev_cmd_row < cmd_row; prev_cmd_row++) {
+			// compare current folder/file to folder/files from previous commands
+			file_t *prev_folder = (*file_system)[prev_cmd_row];
+
+	  	file_t f;
+	  	int file_idx;
+      bool matched_dep = false;
+	  	for (file_idx = 0; (f = folder[file_idx]); file_idx++) {
+
 				file_t prev_f;
 				int prev_file_idx;
 				for (prev_file_idx = 0; (prev_f = prev_folder[prev_file_idx]); prev_file_idx++) {
@@ -215,8 +219,12 @@ bool **create_dep_graph(file_t ***file_system, int *size, int **wait_queue) {
 					if (strcmp(f->file_name, prev_f->file_name) == 0 && (f->is_output || prev_f->is_output)) {
 						dep_graph[cmd_row][prev_cmd_row] = true;
 						(*wait_queue)[cmd_row]++;
+            matched_dep = true;
+            break;
 					}
 				}
+        if (matched_dep)
+          break;
 			}
 		}
 	}
@@ -259,7 +267,7 @@ bool **create_dep_graph(file_t ***file_system, int *size, int **wait_queue) {
 	
 	for (x = 0; x < *size; x++) {
 		printf("Command %d depends on %d commands.\n", x, (*wait_queue)[x]);
-	}
-  */
+	}*/
+ 
 	return dep_graph;
 }

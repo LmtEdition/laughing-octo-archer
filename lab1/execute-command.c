@@ -1,6 +1,7 @@
 // UCLA CS 111 Lab 1 command execution
 #include "command.h"
 #include "command-internals.h"
+#include "alloc.h" //checked_malloc
 
 #include <sys/types.h>
 #include <sys/wait.h>  //waitpid
@@ -283,39 +284,44 @@ execute_command (command_stream_t c_stream, bool time_travel)
       bool **dep_graph = create_dep_graph(&file_system, &folder_count, &wait_queue);
       clean_file_system(&file_system, &folder_count);
 
+      // create an array for holding pid corresponding to commands
+      pid_t *command_pids = (pid_t *)checked_malloc(sizeof(pid_t) * folder_count);
+      int i;
+      for (i = 0; i < folder_count; i++) 
+        command_pids[i] = 0; 
+
       //execute commands in parallel
       int commands_not_finished = folder_count;
 
-      pid_t p;
+      pid_t pid;
 
       while (commands_not_finished > 0) {
-
-        int i;
-              
         // fork child processes for runnable commands
         for (i = 0; i < folder_count; i++) {
 
           if ( (wait_queue[i] == 0) && (c_stream->cmds[i]->status == 2) ) {
 
-            p = fork();
-            if (p == 0) {
+            pid = fork();
+            if (pid == 0) {
 
               // child process executes command
               exec_command(c_stream->cmds[i]);
               free_dep_graph_and_wait_queue(&dep_graph, folder_count, &wait_queue);
-                  int x, child_status;
-                  child_status = c_stream->cmds[i]->status; 
-                       for (x = 0; x < c_stream->size; x++)
-                         free_command(c_stream->cmds[x]);
-                       free(c_stream->cmds);
-                       free(c_stream);
+              //deallocated copied memory
+              int x, child_status;
+              child_status = c_stream->cmds[i]->status; 
+              for (x = 0; x < c_stream->size; x++)
+                free_command(c_stream->cmds[x]);
+              free(c_stream->cmds);
+              free(c_stream);
               _exit(child_status);
 
-            } else if (p > 0) {
+            } else if (pid > 0) {
 
               // parent process set the status to unknown == still running
               c_stream->cmds[i]->status = -1;
               commands_not_finished--;
+              command_pids[i] = pid;
 
             } else {
               perror("Error!");
@@ -326,30 +332,72 @@ execute_command (command_stream_t c_stream, bool time_travel)
 
         // wait for all children to finish, not good for parallelization
         int status;
-        while (wait(&status) > 0) {}
-        last_command_status = status;
+        while ( (pid = wait(&status)) > 0) {
+          last_command_status = status;
 
-        // update statuses and wait queue
-        for (i = 0; i < folder_count; i++) {
-          if (c_stream->cmds[i]->status == -1) {
-            c_stream->cmds[i]->status = 0;
-            //decrement all counts
-            int j;
-            for (j = 0; j < folder_count; j++) {
+          // update status and wait queue
+          i = -1;
+          int j;
+          for (j = 0; j < folder_count; j++) {
+            if (command_pids[j] == pid) {
+              i = j;
+              break;
+            }
+          }
 
-              if (dep_graph[j][i]) {
+          if (i != -1) {
+            if (c_stream->cmds[i]->status == -1) {
+              c_stream->cmds[i]->status = 0;
 
-                if (wait_queue[j] == 0) {
-                  fprintf(stderr,"Wait Queue[%d] is already empty!",j);
+              //decrement all dependency counts, cmd j depends on cmd i that just finished
+              for (j = 0; j < folder_count; j++) {
+
+                if (dep_graph[j][i]) {
+
+                  if (wait_queue[j] == 0) {
+                    fprintf(stderr,"Wait Queue[%d] is already empty!",j);
+                  }
+                  wait_queue[j]--;
+                  // execute command if runnable
+                  if ( (wait_queue[j] == 0) && (c_stream->cmds[j]->status == 2) ) {
+
+                    pid = fork();
+                    if (pid == 0) {
+
+                      // child process executes command
+                      exec_command(c_stream->cmds[j]);
+                      free_dep_graph_and_wait_queue(&dep_graph, folder_count, &wait_queue);
+                      //deallocated copied memory
+                      int x, child_status;
+                      child_status = c_stream->cmds[j]->status; 
+                      for (x = 0; x < c_stream->size; x++)
+                        free_command(c_stream->cmds[x]);
+                      free(c_stream->cmds);
+                      free(c_stream);
+                      _exit(child_status);
+
+                    } else if (pid > 0) {
+
+                      // parent process set the status to unknown == still running
+                      c_stream->cmds[j]->status = -1;
+                      commands_not_finished--;
+                      command_pids[j] = pid;
+
+                    } else {
+                      perror("Error!");
+                      _exit(1);
+                    }
+
+                  }
                 }
-                wait_queue[j]--;
               }
             }
           }
         }
       }
-      // free file system and dependency graph and wait queue
+      // free file system and dependency graph and wait queue and command pid array
       free_dep_graph_and_wait_queue(&dep_graph, folder_count, &wait_queue);
+      free(command_pids);
 
     } else {
 
