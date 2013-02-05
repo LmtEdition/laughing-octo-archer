@@ -52,6 +52,7 @@ echo "Execution took: $TIME_2 seconds"
 
 echo "Time travel took: $TIME_T_2 seconds"
 
+rm output
 (("$TIME_T_2" <=  "$TIME_2")) && echo "Time travel is faster" && exit
 
 #exits with failure if slower
