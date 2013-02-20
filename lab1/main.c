@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "command.h"
 #include "command-internals.h"
@@ -24,6 +25,19 @@ get_next_byte (void *stream)
   return getc (stream);
 }
 
+bool is_numeric(const char* str) {
+
+       while(*str) {
+           if(!isdigit(*str)) {
+               return false;
+           }
+
+           str++;
+        }
+
+        return true;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -31,20 +45,33 @@ main (int argc, char **argv)
   bool print_tree = false;
   bool time_travel = false;
   program_name = argv[0];
+  int N; //n subprocesses
+  int N_location;//location of N on command line
 
-  for (;;)
+  for (;;) {
     switch (getopt (argc, argv, "pt"))
       {
       case 'p': print_tree = true; break;
-      case 't': time_travel = true; break;
+      case 't': time_travel = true; 
+                N_location = optind;
+                //check that number was specified and that it is numeric
+                if(N_location < argc && is_numeric(argv[N_location])) {
+                    //convert string to int
+                    N = (int)strtol(argv[N_location],(char**)NULL,10);
+                    optind++;//increment optind to location of file
+                }
+                break;
       default: usage (); break;
       case -1: goto options_exhausted;
       }
+
+  }
  options_exhausted:;
 
   // There must be exactly one file argument.
-  if (optind != argc - 1)
+  if (optind != argc - 1) {
     usage ();
+  }
 
   script_name = argv[optind];
   FILE *script_stream = fopen (script_name, "r");
