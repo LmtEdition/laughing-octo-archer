@@ -179,13 +179,13 @@ exec_command(command_t c) {
 					exec_command(c->u.command[0]);
 					close(fd[1]);
 
-          free_command(c);
+                  free_command(c); // delete childes copy
 					if (command_status(c->u.command[0]) == 0) {
 						_exit(0);
-          }
+                      }
 					else {
 						_exit(1);
-          }
+                      }
 				} else {
 					// parent process closes write/output side of pipe
 					close(fd[1]);
@@ -235,12 +235,12 @@ exec_command(command_t c) {
 				// parent process
 				} else { 
 					int status;
-						waitpid(childpid, &status, 0);		
+					waitpid(childpid, &status, 0);		
 
 					if (fd_i != -1)
-						close(fd_i);
+					close(fd_i);
 					if (fd_o != -1)
-						close(fd_o);
+					close(fd_o);
 
 					// execvp failed and child process exited correctly
 					if (WEXITSTATUS(status) == 1) {
@@ -263,7 +263,7 @@ exec_command(command_t c) {
 }
 
 int
-execute_command (command_stream_t c_stream, bool time_travel)
+execute_command(command_stream_t c_stream, bool time_travel, int N)
 {
   /* FIXME: Replace this with your implementation.  You may need to
      add auxiliary functions and otherwise modify the source code.
@@ -274,8 +274,15 @@ execute_command (command_stream_t c_stream, bool time_travel)
     int last_command_status;
     file_t** file_system = NULL;
     int folder_count = 0;
+    int total_subproc = 0; // keep track of total number of subprocesses
 
     if (time_travel) {
+        if (N < c_stream->max_num_subproc) {
+            fprintf(stderr, "Error: number of subprocesses specified is too low\n");
+            exit(1);
+        }
+
+
 
       //first build file system
       build_file_system(c_stream, &file_system, &folder_count);
@@ -300,7 +307,10 @@ execute_command (command_stream_t c_stream, bool time_travel)
         // fork child processes for runnable commands
         for (i = 0; i < folder_count; i++) {
 
-          if ( (wait_queue[i] == 0) && (c_stream->cmds[i]->status == 2) ) {
+          if ( (wait_queue[i] == 0) && (c_stream->cmds[i]->status == 2)
+                 && (total_subproc + c_stream->cmds[i]->num_subproc <= N) ) {
+              total_subproc += c_stream->cmds[i]->num_subproc;
+              printf("Executing top level command type: %d, Total number of subprocesses: %d\n", c_stream->cmds[i]->type, total_subproc);
 
             pid = fork();
             if (pid == 0) {
@@ -327,7 +337,7 @@ execute_command (command_stream_t c_stream, bool time_travel)
 
             } else {
               perror("Error!");
-              _exit(1);
+              exit(1);
             }
           }
         }
@@ -341,15 +351,52 @@ execute_command (command_stream_t c_stream, bool time_travel)
           i = -1;
           int j;
           for (j = 0; j < folder_count; j++) {
-            if (command_pids[j] == pid) {
-              i = j;
-              break;
-            }
+              if (command_pids[j] == pid) {
+                i = j;
+                continue;
+              }
+
+              if ( (wait_queue[j] == 0) && (c_stream->cmds[j]->status == 2)
+                     && (total_subproc + c_stream->cmds[j]->num_subproc <= N) ) {
+                  total_subproc += c_stream->cmds[j]->num_subproc;
+                  printf("Executing top level command type: %d, Total number of subprocesses: %d\n", c_stream->cmds[j]->type, total_subproc);
+
+                pid = fork();
+                if (pid == 0) {
+
+                  // child process executes command
+                  exec_command(c_stream->cmds[j]);
+                  free_dep_graph_and_wait_queue(&dep_graph, folder_count, &wait_queue);
+                  //deallocated copied memory
+                  int x, child_status;
+                  child_status = c_stream->cmds[j]->status; 
+                  for (x = 0; x < c_stream->size; x++)
+                    free_command(c_stream->cmds[x]);
+                  free(c_stream->cmds);
+                  free(c_stream);
+                  free(command_pids);
+                  _exit(child_status);
+
+                } else if (pid > 0) {
+
+                  // parent process set the status to unknown == still running
+                  c_stream->cmds[j]->status = -1;
+                  commands_not_finished--;
+                  command_pids[j] = pid;
+
+                } else {
+                  perror("Error!");
+                  exit(1);
+                }
+              }
           }
 
           if (i != -1) {
             if (c_stream->cmds[i]->status == -1) {
               c_stream->cmds[i]->status = 0;
+              //Decrement total subprocesses
+              total_subproc -= c_stream->cmds[i]->num_subproc;
+              printf("Command finished type: %d, Total number of subprocesses: %d\n", c_stream->cmds[i]->type, total_subproc);
 
               //decrement all dependency counts, cmd j depends on cmd i that just finished
               for (j = 0; j < folder_count; j++) {
@@ -361,7 +408,9 @@ execute_command (command_stream_t c_stream, bool time_travel)
                   }
                   wait_queue[j]--;
                   // execute command if runnable
-                  if ( (wait_queue[j] == 0) && (c_stream->cmds[j]->status == 2) ) {
+                  if ( (wait_queue[j] == 0) && (c_stream->cmds[j]->status == 2) && (total_subproc + c_stream->cmds[j]->num_subproc <= N) ) {
+                      total_subproc += c_stream->cmds[j]->num_subproc;
+                      printf("Executing top level command type: %d, Total number of subprocesses: %d\n", c_stream->cmds[i]->type, total_subproc);
 
                     pid = fork();
                     if (pid == 0) {
@@ -388,7 +437,7 @@ execute_command (command_stream_t c_stream, bool time_travel)
 
                     } else {
                       perror("Error!");
-                      _exit(1);
+                      exit(1);
                     }
 
                   }
@@ -416,3 +465,4 @@ execute_command (command_stream_t c_stream, bool time_travel)
 
     return last_command_status;
 }
+

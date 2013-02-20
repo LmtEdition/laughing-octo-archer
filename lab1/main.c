@@ -16,7 +16,7 @@ static char const *script_name;
 static void
 usage (void)
 {
-  error (1, 0, "usage: %s [-pt] SCRIPT-FILE", program_name);
+  error (1, 0, "usage: %s [-p] [-t [N]] SCRIPT-FILE where N is > 0 specifying max number of subprocesses", program_name);
 }
 
 static int
@@ -106,7 +106,7 @@ main (int argc, char **argv)
     
   } else {
 
-    last_command_status = execute_command(command_stream, time_travel);
+    last_command_status = execute_command(command_stream, time_travel, N);
 
   }
 

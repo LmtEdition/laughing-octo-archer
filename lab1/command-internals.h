@@ -37,6 +37,9 @@ struct command
     // for SUBSHELL_COMMAND:
     struct command *subshell_command;
   } u;
+
+  // number of concurrent subprocesses including itself, for design problem
+  int num_subproc; 
 };
 
 // holds an array of top level commands
@@ -45,5 +48,6 @@ struct command_stream
 	command_t* cmds; // array of command_t
 	int size; // size of array
 	int idx; // index for read_command_stream
+    int max_num_subproc; // the max number of sub processes among all commands
 };
 

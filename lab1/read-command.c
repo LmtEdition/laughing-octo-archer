@@ -16,6 +16,50 @@
 /* FIXME: Define the type 'struct command_stream' here.  This should
    complete the incomplete type declaration in command.h.  */
 
+int get_num_subproc(command_t c) {
+    int left_proc;
+    int right_proc;
+    if (c == NULL) 
+        return 0;
+    
+	switch (c->type)
+	{
+		case AND_COMMAND:
+		case SEQUENCE_COMMAND:
+		case OR_COMMAND:
+        {
+            left_proc = get_num_subproc(c->u.command[0]);
+            right_proc = get_num_subproc(c->u.command[1]);
+            // return the bigger of the two
+            if (left_proc >= right_proc)
+                return left_proc;
+            else
+                return right_proc;
+        }
+		case PIPE_COMMAND:
+		{
+            left_proc = get_num_subproc(c->u.command[0]);
+            right_proc = get_num_subproc(c->u.command[1]);
+            // return the sum of the children
+            return left_proc + right_proc; 
+		}
+		case SIMPLE_COMMAND:
+		{
+            return 2;
+		}
+		case SUBSHELL_COMMAND:
+			 return get_num_subproc(c->u.subshell_command);
+		default:
+			fprintf(stderr, "Command has wrong type in get_num_subproc");
+	}
+    return 0;
+}
+
+/* Sets the command struct's maximum concurrent processes */
+void set_command_subproc(command_t c) {
+    c->num_subproc = get_num_subproc(c); 
+}
+
 bool
 is_simple_char(char byte)
 {
@@ -36,6 +80,7 @@ create_command(enum command_type type)
 
   new_cmd->input = NULL;
   new_cmd->output = NULL;
+  new_cmd->num_subproc = 0;
 
   return new_cmd;
 }
@@ -809,33 +854,43 @@ make_command_stream (int (*get_next_byte) (void *),
      add auxiliary functions and otherwise modify the source code.
      You can also use external functions defined in the GNU C Library.  */
 
-  command_stream_t stream = (command_stream_t) checked_malloc(sizeof(struct command_stream)); 
+    command_stream_t stream = (command_stream_t) checked_malloc(sizeof(struct command_stream)); 
 
-  size_t byte_size = (size_t) sizeof(command_t) * 16;
-	stream->cmds = (command_t*) checked_malloc(byte_size);
-	stream->size = 0;
+    size_t byte_size = (size_t) sizeof(command_t) * 16;
+    stream->cmds = (command_t*) checked_malloc(byte_size);
+    stream->size = 0;
 
-  int line_number = 1;
-  command_t *infix_arr;
-  command_t *postfix;
-  int infix_len = 0;
-  while ( (infix_arr = get_infix_commands(get_next_byte, filestream, &line_number, &infix_len)) )
-  {
-    if ((stream->size) * sizeof(command_t) == byte_size) 
-      stream->cmds = checked_grow_alloc(stream->cmds, &byte_size);
+    int line_number = 1;
+    command_t *infix_arr;
+    command_t *postfix;
+    int infix_len = 0;
+    int max_num_subproc = 0;
+    int num_subproc = 0;
+    while ( (infix_arr = get_infix_commands(get_next_byte, filestream, &line_number, &infix_len)) )
+    {
+        if ((stream->size) * sizeof(command_t) == byte_size) 
+            stream->cmds = checked_grow_alloc(stream->cmds, &byte_size);
 
-    postfix = create_postfix(infix_arr, &infix_len);
+        postfix = create_postfix(infix_arr, &infix_len);
 
-    stream->cmds[stream->size] = create_binary_tree(postfix, infix_len);
-		stream->size++;
+        stream->cmds[stream->size] = create_binary_tree(postfix, infix_len);
+        set_command_subproc(stream->cmds[stream->size]); // set the number of max concurrent processes
+        num_subproc = stream->cmds[stream->size]->num_subproc;
+        if (num_subproc > max_num_subproc)
+            max_num_subproc = num_subproc;
+        printf("Command Type: %d, num concurrent processes: %d\n", stream->cmds[stream->size]->type, stream->cmds[stream->size]->num_subproc);
 
-    free(infix_arr);
-  }
+        stream->size++;
+
+        free(infix_arr);
+    }
 
 	if (stream->size * sizeof(command_t) < byte_size)
-   	stream->cmds = (command_t*)checked_realloc(stream->cmds, stream->size * sizeof(command_t));
+   	    stream->cmds = (command_t*)checked_realloc(stream->cmds, stream->size * sizeof(command_t));
 
-  return stream;
+    stream->max_num_subproc = max_num_subproc;
+
+    return stream;
 }
 
 command_t
