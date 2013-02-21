@@ -2,7 +2,7 @@
 
 CC = gcc
 #CFLAGS = -g -Wall -Wextra -Werror
-CFLAGS = -g -Wall -Wextra 
+CFLAGS = -g -Wall -Wextra -pthread
 LAB = 1
 DISTDIR = lab1-$(USER)
 CHECK_DIST = ./check-dist

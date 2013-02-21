@@ -6,9 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <limits.h>
 
 #include "command.h"
 #include "command-internals.h"
+
 
 static char const *program_name;
 static char const *script_name;
@@ -48,6 +50,11 @@ main (int argc, char **argv)
   int N; //n subprocesses
   int N_location;//location of N on command line
 
+  if (argc == 2) {
+      fprintf(stderr, "Sorry, this implementation N subprocesses does not work for execution only mode\n");
+      exit(1);
+  }
+
   for (;;) {
     switch (getopt (argc, argv, "pt"))
       {
@@ -59,7 +66,8 @@ main (int argc, char **argv)
                     //convert string to int
                     N = (int)strtol(argv[N_location],(char**)NULL,10);
                     optind++;//increment optind to location of file
-                }
+                } else
+                    N = INT_MAX;
                 break;
       default: usage (); break;
       case -1: goto options_exhausted;

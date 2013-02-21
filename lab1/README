@@ -35,3 +35,7 @@ Lab1c
    b. From these extracted files, build a 2d matrix representing a dependency graph. Assumption is that a file only depends on files that occur before it in its containing script. 
    c. Create a waiting queue representing the number of commands a command is waiting on. When ever a child process is finished, the main process will update this queue and run non dependent files.
    NOTE: The code for generating the dependency graph and file system is written in parallel-command.h and parallel-command.c
+
+DESIGN PROBLEM
+See design documentation.
+We changed Makefile to include the -pthread flag because it is required for semaphores.
